@@ -69,14 +69,14 @@ const getMetroOptions = (states: StateData[], stateId?: number) : Option[] => {
   return !state ? [] : state.metros.map(({ label, id }) => ({ value: id, label }));
 }
 
-const getInitialState = (): FilterState => ({
+const initialState: FilterState = {
   states: [],
   stateOptions: [],
   metroOptions: [],
   selectedStateOption: null,
   selectedMetroOptions: [],
   isLoading: true,
-})
+}
 
 const reducer = (state: FilterState, action: FilterStateAction): FilterState => {
   console.log(action.type)
@@ -103,7 +103,7 @@ const reducer = (state: FilterState, action: FilterStateAction): FilterState => 
 };
 
 export default function Home() {
-  const [state, dispatch] = useReducer(reducer, getInitialState());
+  const [state, dispatch] = useReducer(reducer, initialState);
  
   useEffect(() => {
     const states = getStateData();
@@ -151,7 +151,10 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main>
+      {state.isLoading ? (
+        <div>Loading</div>
+      ) : (
+        <main>
         <Select
           value={state.selectedStateOption}
           options={state.stateOptions}
@@ -165,8 +168,9 @@ export default function Home() {
           isMulti
           isClearable
           />
-        <button onClick={onResetButtonClicked}>Reset</button>
-      </main>
+          <button onClick={onResetButtonClicked}>Reset</button>
+        </main>
+      )}
     </>
   )
 }
