@@ -5,6 +5,21 @@ import Select, { SingleValue, MultiValue, ActionMeta, Props as SelectProps } fro
 const getStateData = () : StateData[] =>
   JSON.parse(document.body.dataset.states || '[]');
 
+const getUserPreference = () : UserPreference => {
+  const data = JSON.parse(document.body.dataset.preferences || '{}')
+
+  return {
+    stateId: data.state?.value,
+    topicIds: data.topic || [],
+  }
+}
+
+interface UserPreference
+{
+  stateId: number,
+  topicIds: [],
+}
+
 interface Option
 {
   value: number,
@@ -92,13 +107,14 @@ export default function Home() {
  
   useEffect(() => {
     const states = getStateData();
+    const userPreference = getUserPreference();
     const payload : FilterState = {
       isLoading: false,
       states: states,
       stateOptions: states.map(({ id, label } : StateData) => ({ value: id, label })),
     }
 
-    //payload.selectedStateOption = undefined; // load from prefs
+    payload.selectedStateOption = payload.stateOptions.find(x => x.value === userPreference.stateId);
     payload.metroOptions = getMetroOptions(payload.states, payload.selectedStateOption?.value)
 
     dispatch({ type: FilterStateActionKind.LOAD, payload })
