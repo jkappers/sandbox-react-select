@@ -2,36 +2,8 @@ import Head from 'next/head'
 import { useReducer, useCallback, useEffect } from 'react';
 import Select, { SingleValue, MultiValue, ActionMeta, Props as SelectProps } from 'react-select'
 
-const statesData = [
-  {
-    id: 0,
-    name: "Texas",
-    metros: [
-      {
-        id: 0,
-        name: "Dallas"
-      },
-      {
-        id: 1,
-        name: "Houston"
-      },
-    ]
-  },
-  {
-    id: 1,
-    name: "Louisiana",
-    metros: [
-      {
-        id: 2,
-        name: "Bossier"
-      },
-      {
-        id: 3,
-        name: "Haughton"
-      },
-    ]
-  }
-]
+const getStateData = () : StateData[] =>
+  JSON.parse(document.body.dataset.states || '[]');
 
 interface Option
 {
@@ -66,26 +38,20 @@ enum FilterStateActionKind
 interface StateData
 {
   id: number,
-  name: string,
+  label: string,
   metros: MetroData[]
 }
 
 interface MetroData
 {
   id: number,
-  name: string,
+  label: string,
 }
-
-
 
 const getMetroOptions = (states: StateData[], stateId?: number) : Option[] => {
   const state = states.find(x => x.id === stateId);
 
-  if (!state) {
-    return []
-  }
-
-  return state.metros.map(x => ({ value: x.id, label: x.name }));  
+  return !state ? [] : state.metros.map(({ label, id }) => ({ value: id, label }));
 }
 
 const getInitialState = (): FilterState => ({
@@ -125,10 +91,11 @@ export default function Home() {
   const [state, dispatch] = useReducer(reducer, getInitialState());
  
   useEffect(() => {
+    const states = getStateData();
     const payload : FilterState = {
       isLoading: false,
-      states: statesData,
-      stateOptions: statesData.map((state : StateData) => ({ value: state.id, label: state.name })),
+      states: states,
+      stateOptions: states.map(({ id, label } : StateData) => ({ value: id, label })),
     }
 
     //payload.selectedStateOption = undefined; // load from prefs
