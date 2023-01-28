@@ -1,14 +1,14 @@
 import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import { useReducer, useCallback } from 'react';
-import Select, { ActionMeta, Props as SelectProps } from 'react-select'
+import Select, { SingleValue, MultiValue, ActionMeta, Props as SelectProps } from 'react-select'
 
-const states = [
+const stateOptions = [
   { value: 0, label: 'Texas' },
   { value: 1, label: 'Louisiana' }
 ]
 
-const allMetros = [
+const metroOptions = [
   [
     { value: 0, label: "Dallas" },
     { value: 1, label: "Houston" }
@@ -19,14 +19,6 @@ const allMetros = [
   ]
 ]
 
-const StateSelect = (props: SelectProps) => (
-  <Select {...props} isClearable />
-)
-
-const MetroSelect = (props: SelectProps) => (
-  <Select {...props} isMulti isClearable isDisabled={!props.options?.length} />
-)
-
 interface Option
 {
   value: number,
@@ -35,10 +27,10 @@ interface Option
 
 interface FilterState
 {
-  states: Option[],
-  metros?: Option[],
-  selectedState?: Option | null,
-  selectedMetros?: Option[]
+  stateOptions: Option[],
+  metroOptions?: Option[],
+  selectedStateOption?: Option | null,
+  selectedMetroOptions?: Option[]
 }
 
 interface FilterStateAction
@@ -59,45 +51,51 @@ const getMetroOptions = (stateId?: number) : Option[] => {
     return []
   }
 
-  return allMetros[stateId];  
+  return metroOptions[stateId];  
 }
 
-const initialState: FilterState = {
-  states,
-  metros: getMetroOptions(states[0].value),
-  selectedState: states[0],
-  selectedMetros: []
-}
+const getInitialState = (): FilterState => ({
+  stateOptions: stateOptions,
+  metroOptions: getMetroOptions(stateOptions[0].value),
+  selectedStateOption: stateOptions[0],
+  selectedMetroOptions: []
+})
 
 const reducer = (state: FilterState, action: FilterStateAction): FilterState => {
   console.log(action.type)
   switch (action.type) {
     case FilterStateActionKind.CHANGE_STATE:
-      const nextState = { ...state, selectedState: action.payload, selectedMetros: [] }
-
-      nextState.metros = getMetroOptions(nextState.selectedState?.value);
-
-      return nextState;
+      return { 
+        ...state,
+        selectedStateOption: action.payload.stateOption,
+        metroOptions: action.payload.metroOptions,
+        selectedMetroOptions: []
+      }
     case FilterStateActionKind.CHANGE_METRO:
-      return { ...state, selectedMetros: action.payload };
+      return { ...state, selectedMetroOptions: action.payload };
     case FilterStateActionKind.RESET:
-      return { ...state, selectedState: null, selectedMetros: [] }
+      return { ...state, selectedStateOption: null, selectedMetroOptions: [], metroOptions: [] }
     default:
       return state;
   }
 };
 
 export default function Home() {
-  const [state, dispatch] = useReducer(reducer, initialState)
+  const [state, dispatch] = useReducer(reducer, getInitialState());
  
   const onStateSelectChanged = useCallback(
-    (newValue: unknown, _actionMeta: ActionMeta<unknown>): void =>
-      dispatch({ type: FilterStateActionKind.CHANGE_STATE, payload: newValue })
-    , []
+    (newValue: SingleValue<Option>, _actionMeta: ActionMeta<unknown>): void => {
+      const payload = { 
+        stateOption: newValue,
+        metroOptions: getMetroOptions(newValue?.value)
+      }
+
+      dispatch({ type: FilterStateActionKind.CHANGE_STATE, payload })
+    }, []
   );
 
   const onMetroSelectChanged = useCallback(
-    (newValue: unknown, _actionMeta: ActionMeta<unknown>): void =>
+    (newValue: MultiValue<Option>, _actionMeta: ActionMeta<unknown>): void =>
       dispatch({ type: FilterStateActionKind.CHANGE_METRO, payload: newValue })
     , []
   );
@@ -117,8 +115,19 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        <StateSelect options={states} onChange={onStateSelectChanged} value={state.selectedState} />
-        <MetroSelect options={state.metros} isMulti onChange={onMetroSelectChanged} value={state.selectedMetros} />
+        <Select
+          value={state.selectedStateOption}
+          options={stateOptions}
+          onChange={onStateSelectChanged}
+          />
+        <Select
+          value={state.selectedMetroOptions}
+          options={state.metroOptions}
+          onChange={onMetroSelectChanged}
+          isDisabled={!state.metroOptions?.length}
+          isMulti
+          isClearable
+          />
         <button onClick={onResetButtonClicked}>Reset</button>
       </main>
     </>
