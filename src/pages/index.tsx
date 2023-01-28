@@ -1,22 +1,36 @@
 import Head from 'next/head'
-import { Inter } from '@next/font/google'
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useEffect } from 'react';
 import Select, { SingleValue, MultiValue, ActionMeta, Props as SelectProps } from 'react-select'
 
-const stateOptions = [
-  { value: 0, label: 'Texas' },
-  { value: 1, label: 'Louisiana' }
-]
-
-const metroOptions = [
-  [
-    { value: 0, label: "Dallas" },
-    { value: 1, label: "Houston" }
-  ],
-  [
-    { value: 0, label: "Bossier" },
-    { value: 1, label: "Haughton" }
-  ]
+const statesData = [
+  {
+    id: 0,
+    name: "Texas",
+    metros: [
+      {
+        id: 0,
+        name: "Dallas"
+      },
+      {
+        id: 1,
+        name: "Houston"
+      },
+    ]
+  },
+  {
+    id: 1,
+    name: "Louisiana",
+    metros: [
+      {
+        id: 2,
+        name: "Bossier"
+      },
+      {
+        id: 3,
+        name: "Haughton"
+      },
+    ]
+  }
 ]
 
 interface Option
@@ -27,10 +41,12 @@ interface Option
 
 interface FilterState
 {
+  states: StateData[],
   stateOptions: Option[],
   metroOptions?: Option[],
   selectedStateOption?: Option | null,
-  selectedMetroOptions?: Option[]
+  selectedMetroOptions?: Option[],
+  isLoading: boolean
 }
 
 interface FilterStateAction
@@ -41,29 +57,54 @@ interface FilterStateAction
 
 enum FilterStateActionKind
 {
+  LOAD,
   CHANGE_STATE,
   CHANGE_METRO,
   RESET
 }
 
-const getMetroOptions = (stateId?: number) : Option[] => {
-  if (!stateId?.toString) {
+interface StateData
+{
+  id: number,
+  name: string,
+  metros: MetroData[]
+}
+
+interface MetroData
+{
+  id: number,
+  name: string,
+}
+
+
+
+const getMetroOptions = (states: StateData[], stateId?: number) : Option[] => {
+  const state = states.find(x => x.id === stateId);
+
+  if (!state) {
     return []
   }
 
-  return metroOptions[stateId];  
+  return state.metros.map(x => ({ value: x.id, label: x.name }));  
 }
 
 const getInitialState = (): FilterState => ({
-  stateOptions: stateOptions,
-  metroOptions: getMetroOptions(stateOptions[0].value),
-  selectedStateOption: stateOptions[0],
-  selectedMetroOptions: []
+  states: [],
+  stateOptions: [],
+  metroOptions: [],
+  selectedStateOption: null,
+  selectedMetroOptions: [],
+  isLoading: true,
 })
 
 const reducer = (state: FilterState, action: FilterStateAction): FilterState => {
   console.log(action.type)
   switch (action.type) {
+    case FilterStateActionKind.LOAD:
+      return {
+        ...state,
+        ...action.payload,
+      }
     case FilterStateActionKind.CHANGE_STATE:
       return { 
         ...state,
@@ -83,15 +124,28 @@ const reducer = (state: FilterState, action: FilterStateAction): FilterState => 
 export default function Home() {
   const [state, dispatch] = useReducer(reducer, getInitialState());
  
+  useEffect(() => {
+    const payload : FilterState = {
+      isLoading: false,
+      states: statesData,
+      stateOptions: statesData.map((state : StateData) => ({ value: state.id, label: state.name })),
+    }
+
+    //payload.selectedStateOption = undefined; // load from prefs
+    payload.metroOptions = getMetroOptions(payload.states, payload.selectedStateOption?.value)
+
+    dispatch({ type: FilterStateActionKind.LOAD, payload })
+  }, []);
+
   const onStateSelectChanged = useCallback(
     (newValue: SingleValue<Option>, _actionMeta: ActionMeta<unknown>): void => {
       const payload = { 
         stateOption: newValue,
-        metroOptions: getMetroOptions(newValue?.value)
+        metroOptions: getMetroOptions(state.states, newValue?.value)
       }
 
       dispatch({ type: FilterStateActionKind.CHANGE_STATE, payload })
-    }, []
+    }, [state.states]
   );
 
   const onMetroSelectChanged = useCallback(
@@ -117,7 +171,7 @@ export default function Home() {
       <main>
         <Select
           value={state.selectedStateOption}
-          options={stateOptions}
+          options={state.stateOptions}
           onChange={onStateSelectChanged}
           />
         <Select
