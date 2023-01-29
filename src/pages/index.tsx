@@ -1,8 +1,8 @@
 import Head from 'next/head'
 import { useReducer, useCallback, useEffect } from 'react';
-import Select, { SingleValue, MultiValue, ActionMeta, Props as SelectProps } from 'react-select'
+import Select, { SingleValue, MultiValue, ActionMeta } from 'react-select'
 
-const getStateData = () : StateData[] =>
+const getStateData = () : StateEntity[] =>
   JSON.parse(document.body.dataset.states || '[]');
 
 const getUserPreference = () : UserPreference => {
@@ -14,8 +14,7 @@ const getUserPreference = () : UserPreference => {
   }
 }
 
-interface UserPreference
-{
+type UserPreference = {
   stateId: number,
   topicIds: [],
 }
@@ -28,10 +27,10 @@ interface Option
 
 interface FilterState
 {
-  states: StateData[],
-  stateOptions: Option[],
+  states: StateEntity[],
+  stateOptions: OptionWithObjectRef<StateEntity>[],
   metroOptions?: Option[],
-  selectedStateOption?: Option | null,
+  selectedStateOption?: OptionWithObjectRef<StateEntity> | null,
   selectedMetroOptions?: Option[],
   isLoading: boolean
 }
@@ -50,23 +49,25 @@ enum FilterStateActionKind
   RESET
 }
 
-interface StateData
+interface StateEntity
 {
   id: number,
   label: string,
-  metros: MetroData[]
+  metros: MetroEntity[]
 }
 
-interface MetroData
+interface MetroEntity
 {
   id: number,
   label: string,
 }
 
-const getMetroOptions = (states: StateData[], stateId?: number) : Option[] => {
-  const state = states.find(x => x.id === stateId);
+interface OptionWithObjectRef<TObjectRef> extends Option {
+  objectRef: TObjectRef
+}
 
-  return !state ? [] : state.metros.map(({ label, id }) => ({ value: id, label }));
+const getMetroOptions = (state?: StateEntity) : Option[] => {
+  return state ? state.metros.map(({ label, id }) => ({ value: id, label })) : [];
 }
 
 const initialState: FilterState = {
@@ -111,24 +112,24 @@ export default function Home() {
     const payload : FilterState = {
       isLoading: false,
       states: states,
-      stateOptions: states.map(({ id, label } : StateData) => ({ value: id, label })),
+      stateOptions: states.map((state : StateEntity) : OptionWithObjectRef<StateEntity> => ({ value: state.id, label: state.label, objectRef: state })),
     }
 
     payload.selectedStateOption = payload.stateOptions.find(x => x.value === userPreference.stateId);
-    payload.metroOptions = getMetroOptions(payload.states, payload.selectedStateOption?.value)
+    payload.metroOptions = getMetroOptions(payload.selectedStateOption?.objectRef)
 
     dispatch({ type: FilterStateActionKind.LOAD, payload })
   }, []);
 
   const onStateSelectChanged = useCallback(
-    (newValue: SingleValue<Option>, _actionMeta: ActionMeta<unknown>): void => {
+    (newValue: SingleValue<OptionWithObjectRef<StateEntity>>, _actionMeta: ActionMeta<unknown>): void => {
       const payload = { 
         stateOption: newValue,
-        metroOptions: getMetroOptions(state.states, newValue?.value)
+        metroOptions: getMetroOptions(newValue?.objectRef)
       }
 
       dispatch({ type: FilterStateActionKind.CHANGE_STATE, payload })
-    }, [state.states]
+    }, []
   );
 
   const onMetroSelectChanged = useCallback(
